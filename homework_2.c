@@ -99,14 +99,16 @@ int main(int argc, char *argv[])
 	if(answer == 'Y' || answer == 'y')
 	{	printf("Which book title would you like to add? Please do not include spaces and do not exceed 100 characters.\n");
 		scanf("%s", bookTitle);
+		bookTitle[strlen(bookTitle)] = ' '; // add space
 		
 		printf("What is the name of the author? Please do not include spaces and do not exceed 100 characters.\n");
 		scanf("%s", bookAuthor);
+		bookAuthor[strlen(bookAuthor)] = '\n'; //add end line character
 		
 		printf("Which row would you like to place your entry in?\n");
 		scanf("%d", &row);
 
-		printf("You would like to place the book titles: %s by author: %s in row: %d\n",bookTitle, bookAuthor, row);
+		printf("You would like to place the book titles: %sby author: %s in row: %d\n",bookTitle, bookAuthor, row);
 
 		int bytePosition = getBytePosition(row, fileDesc);
 		printf("Byte position is %d\n", bytePosition);
@@ -159,7 +161,7 @@ int getBytePosition(int row, int filedes)
 void insertBook(int fd, int byte, char *BookTitle, char *authorName)
 {	char readData[4028] = {0};
 	char buffer[4028] = {0};
-	int bytesRead, bytesWritten;
+	ssize_t bytesRead, bytesWritten;
 
 	lseek(fd, 0, SEEK_SET);
 
@@ -174,14 +176,23 @@ void insertBook(int fd, int byte, char *BookTitle, char *authorName)
 	printf("Buffer contents %s\n", buffer);
 
 	lseek(fd, byte, SEEK_SET);
-
-	if(bytesWritten = write(fd, BookTitle, strlen(BookTitle)) < strlen(BookTitle))
+	
+	/************************ Writes new book to file ******************************/
+	if((bytesWritten = write(fd, BookTitle, strlen(BookTitle))) < strlen(BookTitle))
 		fprintf(stderr, "Error writing to file: %s\n", strerror(errno));
+	printf("Bytes written are: %zd\n", bytesWritten);
 
-	if(bytesWritten = write(fd, authorName, strlen(authorName)) < strlen(authorName))
+	if((bytesWritten = write(fd, authorName, strlen(authorName))) < strlen(authorName))
 		fprintf(stderr, "Error writing to file: %s\n", strerror(errno));
+	printf("Bytes written are: %zd\n", bytesWritten);
+	/*******************************************************************************/
 
-	if(bytesWritten = write(fd, buffer, strlen(buffer)) < strlen(buffer))
+	/********* Writes the rest of the orignal content back to file *****************/
+	if((bytesWritten = write(fd, buffer, strlen(buffer))) < strlen(buffer))
 		fprintf(stderr, "Error writing to file: %s\n", strerror(errno));
+	printf("Bytes written are: %zd\n", bytesWritten);
+	/*******************************************************************************/
+	
+	lseek(fd, 0, SEEK_SET);
 
 }
