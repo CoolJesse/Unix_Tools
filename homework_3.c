@@ -1,4 +1,3 @@
-
 /*******************************************************************************
 ********************************************************************************
 Macros defined in /usr/include/sys/stat.h
@@ -29,14 +28,13 @@ S_IFBLK ^ S_IFMT = ^ 001 111 000 000 000 000
 #include <string.h>
 #include <stdlib.h>
 
-void file_mode(struct stat buf, char *ptr, char *binary_value);
+void file_stat(struct stat buf);
 char* oct_to_binary(char* octal_value);
 
 int main(int argc, char *argv[])
 {
 	int i;
 	struct stat buf; //for reading stat() function results
-	char *ptr, *binary_value;
 
 	for(i=1; i<argc; i++)
 	{	
@@ -48,14 +46,18 @@ int main(int argc, char *argv[])
 			continue;
 		}
 
-		file_mode(buf, ptr, binary_value);
+		file_stat(buf);
 	}	
 
 	return 0;
 }
-void file_mode(struct stat buf, char *ptr, char *binary_value)
+void file_stat(struct stat buf)
 {
 	char *test_string = "|\tst_nlink\t\t|\t%lo\t\t\t|\n";
+	char *ptr;
+
+	char octal_value[32];
+	char *binary_value;
 
 	printf("S_IFMT = %o\n", S_IFMT);
 	printf("st_mode & S_IFMT = %o\n", buf.st_mode & S_IFMT);
@@ -70,6 +72,7 @@ void file_mode(struct stat buf, char *ptr, char *binary_value)
 	}
 	printf("\n");
 	
+	/*
 	printf("struct stat:\n");
 	printf("|\tst_mode \t\t|\t%o\t\t|\n", buf.st_mode);
 	printf("|\tst_ino  \t\t|\t%lo\t\t|\n", buf.st_ino);
@@ -80,6 +83,78 @@ void file_mode(struct stat buf, char *ptr, char *binary_value)
 	printf("|\tst_gid  \t\t|\t%o\t\t|\n", buf.st_gid);
 	printf("|\tst_size \t\t|\t%lo\t\t|\n", buf.st_size);
 	printf("|\tst_atime\t\t|\t%lo\t\t|\n", buf.st_atime);
+	*/
+
+
+
+
+	int temp_int;
+	long int temp_long_int;
+
+	printf("struct stat:\n");
+	
+	/* st_mode ****************************************/
+	sprintf(octal_value, "%o", buf.st_mode);
+	binary_value = oct_to_binary(octal_value);
+
+	printf("|\tst_mode \t\t|\t%s\t\t|\n", binary_value);
+	//printf("|\tst_mode \t\t|\t%o\t\t|\n", buf.st_mode);
+
+	/* st_ino ******************************************/
+	sprintf(octal_value, "%lo", buf.st_ino);
+	//binary_value = oct_to_binary(octal_value);
+
+	printf("|\tst_ino  \t\t|\t%s\t\t|\n", binary_value);
+	//printf("|\tst_ino  \t\t|\t%lo\t\t|\n", buf.st_ino);
+
+	/* st_dev ******************************************/
+	sprintf(octal_value, "%lo", buf.st_dev);
+	//binary_value = oct_to_binary(octal_value);
+
+	printf("|\tst_dev  \t\t|\t%s\t\t|\n", binary_value);
+	//printf("|\tst_dev  \t\t|\t%lo\t\t|\n", buf.st_dev);
+
+	/* sr_rdev ****************************************/
+	sprintf(octal_value, "%lo", buf.st_rdev);
+	binary_value = oct_to_binary(octal_value);
+
+	printf("|\tst_rdev \t\t|\t%s\t\t|\n", binary_value);
+	//printf("|\tst_rdev \t\t|\t%lo\t\t|\n", buf.st_rdev);
+
+	/* st_link ****************************************/
+	sprintf(octal_value, "%lo", buf.st_nlink);
+	binary_value = oct_to_binary(octal_value);
+
+	printf("|\tst_nlink\t\t|\t%s\t\t|\n", binary_value);
+	//printf("|\tst_nlink\t\t|\t%lo\t\t|\n", buf.st_nlink);
+
+	/* st_uid *****************************************/
+	sprintf(octal_value, "%o", buf.st_uid);
+	binary_value = oct_to_binary(octal_value);
+
+	printf("|\tst_uid  \t\t|\t%s\t\t|\n", binary_value);
+	//printf("|\tst_uid  \t\t|\t%o\t\t|\n", buf.st_uid);
+
+	/* st_gid *****************************************/
+	sprintf(octal_value, "%o", buf.st_gid);
+	binary_value = oct_to_binary(octal_value);
+
+	printf("|\tst_gid  \t\t|\t%s\t\t|\n", binary_value);
+	//printf("|\tst_gid  \t\t|\t%o\t\t|\n", buf.st_gid);
+
+	/* st_size ****************************************/
+	sprintf(octal_value, "%lo", buf.st_size);
+	binary_value = oct_to_binary(octal_value);
+
+	printf("|\tst_size \t\t|\t%s\t\t|\n", binary_value);
+	//printf("|\tst_size \t\t|\t%lo\t\t|\n", buf.st_size);
+
+	/* st_atime ***************************************/
+	sprintf(octal_value, "%lo", buf.st_atime);
+	binary_value = oct_to_binary(octal_value);
+
+	printf("|\tst_atime\t\t|\t%s\t\t|\n", binary_value);
+	//printf("|\tst_atime\t\t|\t%lo\t\t|\n", buf.st_atime);
 
 	for(int i=0; i < strlen(test_string); i++)
 	{
@@ -109,29 +184,24 @@ void file_mode(struct stat buf, char *ptr, char *binary_value)
 		printf("File Type: %s\n", ptr);
 
 	printf("\n");
-
-	char octal_value[11];
-	char *temp;
-
-	int mode_int = buf.st_mode;
-	sprintf(octal_value, "%d", mode_int);
-
-	printf("octal value %s\n", octal_value );
-
-	temp = oct_to_binary(octal_value);
-
-	printf("binary value %s\n", temp);
 }
 
 char* oct_to_binary(char* octal_value)
 {
-	int binary_length = strlen(octal_value)*3;
-	
-	char* binary_value = (char*)malloc(binary_length*sizeof(char));
+	//int binary_length = strlen(octal_value)*3;
+	char* binary_value = (char*)malloc(32*sizeof(char));
 
+	int j =0;
+	if(strlen(octal_value) < 11)
+	{	//printf("octal_value: %ld\n", strlen(octal_value));
+		int append_length = ( 32 - (strlen(octal_value)*3) );
+		for( ; j < append_length; j++)
+			binary_value[j] = '0';
+	}
+	
 	/*Loop for passing through octal_value and creating binary_values string*/
 	/*i variable corresponds to octal_value and j to binary_value*/
-	for(int i=0, j=0; i < strlen(octal_value); i++, j+=3)
+	for(int i=0; i < strlen(octal_value); i++, j+=3)
 	{				
 		if(octal_value[i] == '0')
 		{
@@ -181,12 +251,7 @@ char* oct_to_binary(char* octal_value)
 			binary_value[j+1] = '1';
 			binary_value[j+2] = '1'; 
 		}
-		else
-		{
-			binary_value[j] = '?';
-			binary_value[j+1] = '?';
-			binary_value[j+2] = '?'; 
-		}
+
 	}
 
 	return binary_value;
