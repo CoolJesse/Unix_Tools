@@ -53,7 +53,7 @@ int main(int argc, char *argv[])
 }
 void file_stat(struct stat buf)
 {
-	char *test_string = "|\tst_nlink\t\t|\t%lo\t\t\t|\n";
+	char *test_string = "|\tst_rdev\t\t|\t%lo\t\t\t\t\t\t\t|\n";
 	char *ptr;
 
 	char octal_value[32];
@@ -71,25 +71,6 @@ void file_stat(struct stat buf)
 			printf("-");
 	}
 	printf("\n");
-	
-	/*
-	printf("struct stat:\n");
-	printf("|\tst_mode \t\t|\t%o\t\t|\n", buf.st_mode);
-	printf("|\tst_ino  \t\t|\t%lo\t\t|\n", buf.st_ino);
-	printf("|\tst_dev  \t\t|\t%lo\t\t|\n", buf.st_dev);
-	printf("|\tst_rdev \t\t|\t%lo\t\t|\n", buf.st_rdev);
-	printf("|\tst_nlink\t\t|\t%lo\t\t|\n", buf.st_nlink);
-	printf("|\tst_uid  \t\t|\t%o\t\t|\n", buf.st_uid);
-	printf("|\tst_gid  \t\t|\t%o\t\t|\n", buf.st_gid);
-	printf("|\tst_size \t\t|\t%lo\t\t|\n", buf.st_size);
-	printf("|\tst_atime\t\t|\t%lo\t\t|\n", buf.st_atime);
-	*/
-
-
-
-
-	int temp_int;
-	long int temp_long_int;
 
 	printf("struct stat:\n");
 	
@@ -189,7 +170,7 @@ void file_stat(struct stat buf)
 char* oct_to_binary(char* octal_value)
 {
 	//int binary_length = strlen(octal_value)*3;
-	char* binary_value = (char*)malloc(32*sizeof(char));
+	char* binary_value = (char*)malloc(33*sizeof(char));
 
 	int j =0;
 	if(strlen(octal_value) < 11)
@@ -253,7 +234,7 @@ char* oct_to_binary(char* octal_value)
 		}
 
 	}
-
+	binary_value[32] = '\0';
 	return binary_value;
 
 
