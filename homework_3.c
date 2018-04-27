@@ -22,19 +22,29 @@ S_IFBLK ^ S_IFMT = ^ 001 111 000 000 000 000
 *******************************************************************************
 *******************************************************************************/
 
+
 #include <sys/types.h>
 #include <sys/stat.h> //for filetype macros and mask S_IFMT
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
 
-void file_stat(struct stat buf);
+void file_stat(char *file_name, struct stat buf);
+void permission_bits(char *file_name, struct stat buf);
+void file_type(char *file_name, struct stat buf);
+void sticky_bit(char *file_name, struct stat buf);
+void set_group_id(char *file_name, struct stat buf);
+void set_user_id(char *file_name, struct stat buf);
+
 char* oct_to_binary(char* octal_value);
+void list_permission_bit_values(void);
 
 int main(int argc, char *argv[])
 {
 	int i;
 	struct stat buf; //for reading stat() function results
+
+	//list_permission_bit_values();
 
 	for(i=1; i<argc; i++)
 	{	
@@ -46,23 +56,34 @@ int main(int argc, char *argv[])
 			continue;
 		}
 
-		file_stat(buf);
+		file_stat(argv[i], buf);
+		list_permission_bit_values();
+		permission_bits(argv[i], buf);
+		file_type(argv[i], buf);
+		sticky_bit(argv[i], buf);
+		set_group_id(argv[i], buf);
+		set_user_id(argv[i], buf);
 	}	
 
 	return 0;
 }
-void file_stat(struct stat buf)
+void file_stat(char * file_name, struct stat buf)
 {
-	char *test_string = "|\tst_rdev\t\t|\t%lo\t\t\t\t\t\t\t|\n";
-	char *ptr;
-
+	//char *ptr;
 	char octal_value[32];
 	char *binary_value;
 
-	printf("S_IFMT = %o\n", S_IFMT);
-	printf("st_mode & S_IFMT = %o\n", buf.st_mode & S_IFMT);
+	/*sprintf(octal_value, "%o", S_IFMT);
+	binary_value = oct_to_binary(octal_value);
+	printf("S_IFMT = octal: %o binary: %s\n", S_IFMT, binary_value);
+
+	sprintf(octal_value, "%o", (buf.st_mode & S_IFMT));
+	binary_value = oct_to_binary(octal_value);
+	printf("st_mode & S_IFMT = octal: %o binary %s\n", buf.st_mode & S_IFMT, binary_value);*/
+
 	printf("\n");
 
+	char *test_string = "|\tst_rdev\t\t|\t%lo\t\t\t\t\t\t\t|\n";
 	for(int i=0; i < strlen(test_string); i++)
 	{
 		if(test_string[i] == '\t')
@@ -72,7 +93,9 @@ void file_stat(struct stat buf)
 	}
 	printf("\n");
 
-	printf("struct stat:\n");
+/*****************************************************************************************************/
+/* file stat values **********************************************************************************/
+	printf("%s struct stat:\n", file_name);
 	
 	/* st_mode ****************************************/
 	sprintf(octal_value, "%o", buf.st_mode);
@@ -83,14 +106,14 @@ void file_stat(struct stat buf)
 
 	/* st_ino ******************************************/
 	sprintf(octal_value, "%lo", buf.st_ino);
-	//binary_value = oct_to_binary(octal_value);
+	binary_value = oct_to_binary(octal_value);
 
 	printf("|\tst_ino  \t\t|\t%s\t\t|\n", binary_value);
 	//printf("|\tst_ino  \t\t|\t%lo\t\t|\n", buf.st_ino);
 
 	/* st_dev ******************************************/
 	sprintf(octal_value, "%lo", buf.st_dev);
-	//binary_value = oct_to_binary(octal_value);
+	binary_value = oct_to_binary(octal_value);
 
 	printf("|\tst_dev  \t\t|\t%s\t\t|\n", binary_value);
 	//printf("|\tst_dev  \t\t|\t%lo\t\t|\n", buf.st_dev);
@@ -145,7 +168,152 @@ void file_stat(struct stat buf)
 			printf("-");
 	}
 	printf("\n");
-	
+/*********************************************************************************************************/
+}
+
+void permission_bits(char *file_name, struct stat buf)
+{
+	//char *ptr;
+	char octal_value[32];
+	char *binary_value;
+
+	char *test_string = "|\tst_rdev\t\t|\t%lo\t\t\t\t\t\t\t|\n";
+	for(int i=0; i < strlen(test_string); i++)
+	{
+		if(test_string[i] == '\t')
+			printf("------");
+		else
+			printf("-");
+	}
+
+/* st_mode bits ******************************************************************************************/
+
+	printf("%s st_mode permission bits:\n", file_name);
+	/* st_mode *********************************************************/
+	sprintf(octal_value, "%o", buf.st_mode);
+	binary_value = oct_to_binary(octal_value);
+	printf("|\tst_mode                  |\t%s\t\t|\n", binary_value);
+
+	/* S_IRUSR *********************************************************/
+	sprintf(octal_value, "%o", (S_IRUSR & buf.st_mode));
+	binary_value = oct_to_binary(octal_value);
+	printf("|\tUser read permission:    |\t%s\t\t|\n", binary_value);
+
+	/* S_IWUSR *********************************************************/
+	sprintf(octal_value, "%o", (S_IWUSR & buf.st_mode));
+	binary_value = oct_to_binary(octal_value);
+	printf("|\tUser write permission:   |\t%s\t\t|\n", binary_value);
+
+	/* S_IXUSR *********************************************************/
+	sprintf(octal_value, "%o", (S_IXUSR & buf.st_mode));
+	binary_value = oct_to_binary(octal_value);
+	printf("|\tUser execute permission: |\t%s\t\t|\n", binary_value);
+
+	/* S_IRGRP *********************************************************/
+	sprintf(octal_value, "%o", (S_IRGRP & buf.st_mode));
+	binary_value = oct_to_binary(octal_value);
+	printf("|\tGroup read permission:   |\t%s\t\t|\n", binary_value);
+
+	/* S_IWGRP *********************************************************/
+	sprintf(octal_value, "%o", (S_IWGRP & buf.st_mode));
+	binary_value = oct_to_binary(octal_value);
+	printf("|\tGroup write permission:  |\t%s\t\t|\n", binary_value);
+
+	/* S_IXGRP *********************************************************/
+	sprintf(octal_value, "%o", (S_IXGRP & buf.st_mode));
+	binary_value = oct_to_binary(octal_value);
+	printf("|\tGroup execute permission:|\t%s\t\t|\n", binary_value);
+
+	/* S_IROTH *********************************************************/
+	sprintf(octal_value, "%o", (S_IROTH & buf.st_mode));
+	binary_value = oct_to_binary(octal_value);
+	printf("|\tOther read permission:   |\t%s\t\t|\n", binary_value);
+
+	/* S_IWOTH *********************************************************/
+	sprintf(octal_value, "%o", (S_IWOTH & buf.st_mode));
+	binary_value = oct_to_binary(octal_value);
+	printf("|\tOther write permission:  |\t%s\t\t|\n", binary_value);
+
+	/* S_IXOTH *********************************************************/
+	sprintf(octal_value, "%o", (S_IXOTH & buf.st_mode));
+	binary_value = oct_to_binary(octal_value);
+	printf("|\tOther execute permission:|\t%s\t\t|\n", binary_value);
+
+	for(int i=0; i < strlen(test_string); i++)
+	{
+		if(test_string[i] == '\t')
+			printf("------");
+		else
+			printf("-");
+	}
+	printf("\n");
+/*********************************************************************************************************/
+}
+void file_type(char *file_name, struct stat buf)
+{
+	char *ptr;
+	char octal_value[32];
+	char *binary_value;
+
+/* File Type *********************************************************************************************/
+
+	/* st_mode **********************************************************************************/	
+	sprintf(octal_value, "%o", (buf.st_mode));
+	binary_value = oct_to_binary(octal_value);
+	printf("|\tst_mode: |\toctal: %o binary: %s\t\t|\n", buf.st_mode, binary_value);
+
+	/* S_IFMT **********************************************************************************/
+	sprintf(octal_value, "%o", (S_IFMT));
+	binary_value = oct_to_binary(octal_value);
+	printf("|\tS_IFMT:  |\toctal: %o binary: %s\t\t|\n", S_IFMT, binary_value);
+
+	printf("-------------------------------------------------------------------------------\n");
+
+	sprintf(octal_value, "%o", (S_IFMT & buf.st_mode));
+	binary_value = oct_to_binary(octal_value);
+	printf("|\tbuf.st_mode & S_IFMT:  %o \t      %s\t\t|\n", (S_IFMT & buf.st_mode), binary_value);
+
+	printf("-------------------------------------------------------------------------------\n");
+
+	/* S_IFBLK *********************************************************************************/
+	sprintf(octal_value, "%o", (S_IFBLK));
+	binary_value = oct_to_binary(octal_value);
+	printf("|\tS_IFBLK: |\toctal: %o binary:  %s\t\t|\n", S_IFBLK, binary_value);
+
+	/* S_IFCHR *********************************************************************************/
+	sprintf(octal_value, "%o", (S_IFCHR));
+	binary_value = oct_to_binary(octal_value);
+	printf("|\tS_IFCHR: |\toctal: %o binary:  %s\t\t|\n", S_IFCHR, binary_value);
+
+	/* S_IFDIR *********************************************************************************/
+	sprintf(octal_value, "%o", (S_IFDIR));
+	binary_value = oct_to_binary(octal_value);
+	printf("|\tS_IFDIR: |\toctal: %o binary:  %s\t\t|\n", S_IFDIR, binary_value);
+
+	/* S_IFIFO ********************************************************************************/
+	sprintf(octal_value, "%o", (S_IFIFO));
+	binary_value = oct_to_binary(octal_value);
+	printf("|\tS_IFIFO: |\toctal: %o binary:  %s\t\t|\n", S_IFIFO, binary_value);
+
+	/* S_IFREG ********************************************************************************/
+	sprintf(octal_value, "%o", (S_IFREG));
+	binary_value = oct_to_binary(octal_value);
+	printf("|\tS_IFREG: |\toctal: %o binary: %s\t\t|\n", S_IFREG, binary_value);
+
+	/* S_IFLNK ********************************************************************************/
+	sprintf(octal_value, "%o", (S_IFLNK));
+	binary_value = oct_to_binary(octal_value);
+	printf("|\tS_IFLNK: |\toctal: %o binary: %s\t\t|\n", S_IFLNK, binary_value);
+
+	/* S_IFSOCK ******************************************************************************/
+	sprintf(octal_value, "%o", (S_IFSOCK));
+	binary_value = oct_to_binary(octal_value);
+	printf("|\tS_IFSOCK:|\toctal: %o binary: %s\t\t|\n", S_IFSOCK, binary_value);
+
+	printf("-------------------------------------------------------------------------------\n");
+	printf("\n");
+
+/**************************************************************************************************/
 	if( S_ISREG(buf.st_mode) )
 		ptr = "regular";
 	else if( S_ISDIR(buf.st_mode) )
@@ -162,11 +330,11 @@ void file_stat(struct stat buf)
 		ptr = "socket";
 	else
 		ptr = "unknown file mode";
-		printf("File Type: %s\n", ptr);
 
+	printf("%s file type: %s\n", file_name, ptr);
 	printf("\n");
+/************************************************************************************/
 }
-
 char* oct_to_binary(char* octal_value)
 {
 	//int binary_length = strlen(octal_value)*3;
@@ -236,6 +404,141 @@ char* oct_to_binary(char* octal_value)
 	}
 	binary_value[32] = '\0';
 	return binary_value;
+}
+void list_permission_bit_values(void)
+{
+	char *test_string = "|\tS_IRUSR\t\t|\t%lo\t\t\t\t\t\t\t|\n";
 
+	char octal_value[32];
+	char *binary_value;
 
+	for(int i=0; i < strlen(test_string); i++)
+	{
+		if(test_string[i] == '\t')
+			printf("------");
+		else
+			printf("-");
+	}
+	printf("\n");
+	printf("File permission bits:\n");
+	/* S_IRUSR ****************************************/
+	sprintf(octal_value, "%o", S_IRUSR);
+	binary_value = oct_to_binary(octal_value);
+	printf("|\tS_IRUSR\t\t|\t%s\t\t|\n", binary_value);
+
+	/* S_IWUSR ****************************************/
+	sprintf(octal_value, "%o", S_IWUSR);
+	binary_value = oct_to_binary(octal_value);
+	printf("|\tS_IWUSR\t\t|\t%s\t\t|\n", binary_value);
+
+	/* S_IXUSR ****************************************/
+	sprintf(octal_value, "%o", S_IXUSR);
+	binary_value = oct_to_binary(octal_value);
+	printf("|\tS_IXUSR\t\t|\t%s\t\t|\n", binary_value);
+
+	/* S_IRGRP ***************************************/
+	sprintf(octal_value, "%o", S_IRGRP);
+	binary_value = oct_to_binary(octal_value);
+	printf("|\tS_IRGRP\t\t|\t%s\t\t|\n", binary_value);
+
+	/* S_IWGRP ****************************************/
+	sprintf(octal_value, "%o", S_IWGRP);
+	binary_value = oct_to_binary(octal_value);
+	printf("|\tS_IWGRP\t\t|\t%s\t\t|\n", binary_value);
+
+	/* S_IXGRP ****************************************/
+	sprintf(octal_value, "%o", S_IXGRP);
+	binary_value = oct_to_binary(octal_value);
+	printf("|\tS_IXGRP\t\t|\t%s\t\t|\n", binary_value);
+
+	/* S_IROTH ****************************************/
+	sprintf(octal_value, "%o", S_IROTH);
+	binary_value = oct_to_binary(octal_value);
+	printf("|\tS_IROTH\t\t|\t%s\t\t|\n", binary_value);
+
+	/* S_IWOTH ****************************************/
+	sprintf(octal_value, "%o", S_IWOTH);
+	binary_value = oct_to_binary(octal_value);
+	printf("|\tS_IWOTH\t\t|\t%s\t\t|\n", binary_value);
+
+	/* S_IXOTH ****************************************/
+	sprintf(octal_value, "%o", S_IXOTH);
+	binary_value = oct_to_binary(octal_value);
+	printf("|\tS_IXOTH\t\t|\t%s\t\t|\n", binary_value);
+	
+
+	for(int i=0; i < strlen(test_string); i++)
+	{
+		if(test_string[i] == '\t')
+			printf("------");
+		else
+			printf("-");
+	}
+	printf("\n");
+}
+void sticky_bit(char *file_name, struct stat buf)
+{
+	char octal_value[32];
+	char *binary_value;	
+
+	printf("%s sticky bit:\n", file_name);
+	printf("-------------------------------------------------------------------------------\n");	
+	sprintf(octal_value, "%o", S_ISVTX);
+	binary_value = oct_to_binary(octal_value);
+	printf("|\tS_ISVTX: |\toctal: %o   binary: %s\t\t|\n", S_ISVTX, binary_value);
+
+	printf("-------------------------------------------------------------------------------\n");
+	sprintf(octal_value, "%o", (buf.st_mode));
+	binary_value = oct_to_binary(octal_value);
+	printf("|\tst_mode: |\toctal: %o binary: %s\t\t|\n", buf.st_mode, binary_value);
+
+	printf("-------------------------------------------------------------------------------\n");	
+	sprintf(octal_value, "%o", (S_ISVTX & buf.st_mode));
+	binary_value = oct_to_binary(octal_value);
+	printf("|   st_mode & S_ISVTX: |  octal: %o    binary: %s\t\t|\n", (S_ISVTX & buf.st_mode), binary_value);
+	printf("-------------------------------------------------------------------------------\n");
+}
+void set_group_id(char *file_name, struct stat buf)
+{
+	char octal_value[32];
+	char *binary_value;
+
+	printf("%s group id:\n", file_name);
+	printf("-------------------------------------------------------------------------------\n");	
+	sprintf(octal_value, "%o", S_ISGID);
+	binary_value = oct_to_binary(octal_value);
+	printf("|\tS_ISGID: |\toctal: %o   binary: %s\t\t|\n", S_ISGID, binary_value);
+
+	printf("-------------------------------------------------------------------------------\n");
+	sprintf(octal_value, "%o", (buf.st_mode));
+	binary_value = oct_to_binary(octal_value);
+	printf("|\tst_mode: |\toctal: %o binary: %s\t\t|\n", buf.st_mode, binary_value);
+
+	printf("-------------------------------------------------------------------------------\n");	
+	sprintf(octal_value, "%o", (S_ISGID & buf.st_mode));
+	binary_value = oct_to_binary(octal_value);
+	printf("|   st_mode & S_ISGID: |  octal: %o    binary: %s\t\t|\n", (S_ISGID & buf.st_mode), binary_value);
+	printf("-------------------------------------------------------------------------------\n");
+}
+void set_user_id(char *file_name, struct stat buf)
+{
+	char octal_value[32];
+	char *binary_value;
+
+	printf("%s user id:\n", file_name);
+	printf("-------------------------------------------------------------------------------\n");	
+	sprintf(octal_value, "%o", S_ISUID);
+	binary_value = oct_to_binary(octal_value);
+	printf("|\tS_ISUID: |\toctal: %o   binary: %s\t\t|\n", S_ISUID, binary_value);
+
+	printf("-------------------------------------------------------------------------------\n");
+	sprintf(octal_value, "%o", (buf.st_mode));
+	binary_value = oct_to_binary(octal_value);
+	printf("|\tst_mode: |\toctal: %o binary: %s\t\t|\n", buf.st_mode, binary_value);
+
+	printf("-------------------------------------------------------------------------------\n");	
+	sprintf(octal_value, "%o", (S_ISUID & buf.st_mode));
+	binary_value = oct_to_binary(octal_value);
+	printf("|   st_mode & S_ISUID: |  octal: %o    binary: %s\t\t|\n", (S_ISUID & buf.st_mode), binary_value);
+	printf("-------------------------------------------------------------------------------\n");
 }
