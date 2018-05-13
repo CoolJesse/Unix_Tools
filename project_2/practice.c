@@ -8,8 +8,8 @@
 
 int search(char *file_name, char *book_info);
 int insert(int file_desc, char *file_name, char *book_info);
-int delete(char* file_name, char *book_info);
-int replace(int file_desc, char *book_author, char *book_title);
+int delete(int file_desc, char *file_name, char *book_info);
+int replace(int file_desc, char *file_name, char *book_info);
 
 int main(int argc, char *argv[])
 {
@@ -129,14 +129,14 @@ int search(char *file_name, char *book_info)
 		//fscanf(fp, "%s", book_title_comp);
 
 		if( strncmp(book_info, book_info_comp, strlen(book_info)) == 0 )
-			return byte_count;
+			return byte_position;
 
 		else
-			byte_count += strlen(book_info);
+			byte_position += strlen(book_info);
 	}
 
-	byte_count = 0; //record is not found
-	return byte_count
+	byte_position = 0; //record is not found
+	return byte_position;
 }
 int insert(int file_desc, char *file_name, char *book_info)
 {
@@ -153,7 +153,7 @@ int insert(int file_desc, char *file_name, char *book_info)
 
 	return success;
 }   
-int delete(char* file_name, char *book_info)
+int delete(int file_desc, char* file_name, char *book_info)
 {
 	int byte_position = 0;
 	if( (byte_position = search(file_name, book_info)) != 0)
@@ -164,6 +164,14 @@ int delete(char* file_name, char *book_info)
 	else
 		printf("The record you are attempting to delete does not exist.\n");
 }
-int replace(int file_desc, char *book_author, char *book_title)
+int replace(int file_desc, char *file_name, char *book_info)
 {
+	int byte_position = 0;
+	if( (byte_position = search(file_name, book_info)) != 0)
+	{
+		printf("replace function here.\n");
+	}
+	
+	else
+		printf("The record you are attempting to replace does not exist.\n");
 }
