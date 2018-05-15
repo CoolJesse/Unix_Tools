@@ -118,7 +118,7 @@ int main(int argc, char *argv[])
 			printf("You have entered REPLACE, %s\n", book_info_prompt);
 
 			if(read(STDIN_FILENO, input_buffer, INPUT_BUFF_SIZE) > 0)
-				replace(fd, filename, input_buffer, file_buffer_1, file_buffer_1);
+				replace(fd, filename, input_buffer, file_buffer_1, file_buffer_2);
 			else
 				printf("Sorry, you did not enter any data to insert into the file.\n");
 		}
@@ -200,39 +200,52 @@ int insert(int file_desc, char *file_name, char *book_info)
 int delete(int file_desc, char* file_name, char *book_info, char buffer_1[], char buffer_2[])
 {
 	int byte_position = 0;
+	int fd;
+
+	ssize_t bytes_read_1, bytes_read_2, total_length;
 
 	clear_char_buffer(buffer_1, FILE_BUFF_SIZE);
 	clear_char_buffer(buffer_2, FILE_BUFF_SIZE);
 
 	if( search(file_name, book_info, &byte_position) == 1) //entry exists in file to delete
 	{
-		if(pread(file_desc, buffer_1, byte_position, 0)< 0) //read up to record to be replaced
+		if((bytes_read_1=pread(file_desc, buffer_1, byte_position, 0) )< 0) //read up to record to be replaced
 			printf("Error reading from file number %d\n", file_desc);
 
-		if(pread(file_desc, buffer_2, FILE_BUFF_SIZE, strlen(book_info) + byte_position)<0)
+		if((bytes_read_2=pread(file_desc, buffer_2, FILE_BUFF_SIZE, (strlen(book_info) + byte_position)))<0)
 			printf("Error reading from file number %d\n", file_desc);
 
 		else
-		{
-			printf("buffer_1 %s\n", buffer_1);
-			printf("buffer_2 %s\n", buffer_2);
+		{	
+			/********************************************************************************/
+			mode_t mode = S_IRWXU; //This is equivalent to ‘(S_IRUSR | S_IWUSR | S_IXUSR)
 
-			if(pwrite(file_desc, buffer_1, strlen(buffer_1), 0) < strlen(buffer_1) )
+			if((fd = open(file_name, O_CREAT|O_RDWR|O_TRUNC, mode)) == -1)
+				fprintf(stderr, "Error opening/creating file: %s\n", strerror(errno));
+			/********************************************************************************/
+
+			if(pwrite(fd, buffer_1, strlen(buffer_1), 0) < strlen(buffer_1) )
 				printf("Error writing to file %d", file_desc);
 
-			if(pwrite(file_desc, buffer_2, strlen(buffer_2), strlen(buffer_1)) < strlen(buffer_2) )
+			if(pwrite(fd, buffer_2, strlen(buffer_2), strlen(buffer_1)) < strlen(buffer_2) )
 				printf("Error writing to file %d", file_desc);
-
+			/********************************************************************************/
 			printf("Delete entry at byte_position: %d\n", byte_position);
+
+			return 1;
 		}	
 	}
 	
 	else
+	{
 		printf("The record you are attempting to delete does not exist.\n");
+		return -1;
+	}
 }
 int replace(int file_desc, char *file_name, char *book_info, char buffer_1[], char buffer_2[])
 {
 	int byte_position = 0;
+	int fd;
 	char replacement_entry[INPUT_BUFF_SIZE];
 
 	clear_char_buffer(buffer_1, FILE_BUFF_SIZE);
@@ -240,10 +253,11 @@ int replace(int file_desc, char *file_name, char *book_info, char buffer_1[], ch
 
 	if( search(file_name, book_info, &byte_position) == 1) //entry exists in file to delete
 	{
-		if(read(STDIN_FILENO, replacement_entry, INPUT_BUFF_SIZE)) > 0)
+		printf("Please enter the book title and author, in the appropriate format, that you would like to replace the old entry with.\n");
+		if(read(STDIN_FILENO, replacement_entry, INPUT_BUFF_SIZE) < 0)
 		{
 			printf("Error reading entry to replace with, error: %s\n", strerror(errno));
-			break;
+			return -1;
 		}		
 
 		if(pread(file_desc, buffer_1, byte_position, 0)< 0) //read up to record to be replaced
@@ -255,22 +269,34 @@ int replace(int file_desc, char *file_name, char *book_info, char buffer_1[], ch
 		else
 		{
 			printf("buffer_1 %s\n", buffer_1);
-			printf("replacement text: %s\n", book_info);
+			printf("replacement text: %s\n", replacement_entry);
 			printf("buffer_2 %s\n", buffer_2);
+			/********************************************************************************/
+			mode_t mode = S_IRWXU; //This is equivalent to ‘(S_IRUSR | S_IWUSR | S_IXUSR)
 
-			if(pwrite(file_desc, buffer_1, strlen(buffer_1), 0) < strlen(buffer_1) )
-				printf("Error writing to file %d", file_desc);
+			if((fd = open(file_name, O_CREAT|O_RDWR|O_TRUNC, mode)) == -1)
+				fprintf(stderr, "Error opening/creating file: %s\n", strerror(errno));
+			/********************************************************************************/
 
-			if(pwrite(file_desc, book_info, strlen(book_info), strlen(buffer_1)) < strlen(book_info) )
+			if(pwrite(fd, buffer_1, strlen(buffer_1), 0) < strlen(buffer_1) )
+				printf("Error writing buffer_1 to file %d", file_desc);
+
+			if(pwrite(fd, buffer_2, strlen(buffer_2), strlen(buffer_1)) < strlen(buffer_2) )
+				printf("Error writing buffer_2 to file %d", file_desc);
+
+			if(pwrite(fd, replacement_entry, strlen(replacement_entry), (strlen(buffer_1) + strlen(buffer_2))) < strlen(replacement_entry) )
 				printf("Error writing replacement entry to file %d\n", file_desc);
-
-			if(pwrite(file_desc, buffer_2, strlen(buffer_2), strlen(buffer_1)) < strlen(buffer_2) )
-				printf("Error writing to file %d", file_desc);
+			/*********************************************************************************/
 
 			printf("Replaced entry at byte_position: %d\n", byte_position);
+			
+			return 1;
 		}	
 	}
 	
 	else
+	{
 		printf("The record you are attempting to replace does not exist.\n");
+		return -1;
+	}
 }
