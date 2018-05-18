@@ -1,6 +1,5 @@
-/*
-On linux system compile like so: gcc -o output_file program.c -lpthread
-*/
+/* On linux system compile like so: gcc -o output_file program.c -lpthread */
+
 #include <unistd.h>
 #include <stdio.h>
 #include <string.h>
@@ -34,8 +33,8 @@ typedef struct request_tag
 	int synchronous;          // whether request is synchronous
 	int done_flag;            // predicate this request done
 	pthread_cond_t done;      // wait for this thread to finish
-	char prompt[32];          // prompt server message to client
-	char text[28];            // read/write text
+	char prompt[INPUT_BUFF_SIZE];          // prompt server message to client
+	char text[FILE_BUFF_SIZE];            // read/write text
 }request_t;
 /******************************************************************************************/
 typedef struct server_tag
@@ -81,6 +80,7 @@ char file_buffer_2[FILE_BUFF_SIZE];
 int n, comp, fd, byte_position;
 
 char *filename = "books.txt";
+char *command_prompt = "Please enter a command: READ, WRITE, QUIT, SEARCH, INSERT, DELETE, or REPLACE";
 char *book_info_prompt = "Please enter the title and author info in the following format: BookTitle AuthorName";
 
 /******************************************************************************************/
@@ -88,10 +88,8 @@ char *book_info_prompt = "Please enter the title and author info in the followin
 int main(int argc, char **argv)
 {
 	pthread_t thread;
-
+	pthread_t threadID[CLIENT_THREADS];
 	int count, err;  
-
-
 
 	/** Create file to write to ******************************************************/
 	mode_t mode = S_IRWXU; //This is equivalent to ‘(S_IRUSR | S_IWUSR | S_IXUSR)
@@ -123,9 +121,9 @@ int main(int argc, char **argv)
 	/** create 4 threads ***************************************************/
 	for(count=0; count<client_threads; count++)
 	{	
-		printf("Creating client #%d...\n", count);
-		err=pthread_create(&thread, NULL, client_routine, (void *)&count);
-		//pthread_join(thread, NULL);
+		printf("Creating client #%d, threadID %lu\n", count, threadID[count]);
+		err=pthread_create(&threadID[count], NULL, client_routine, (void *)&count);
+		//err=pthread_create(&thread, NULL, client_routine, (void *)&count);
 	}
 	printf("\n");
 	/** lock client mutex **************************************************/
@@ -147,6 +145,9 @@ int main(int argc, char **argv)
 
 	return 0;
 }
+/** End of main body of funcioin **********************************************************/
+/******************************************************************************************/
+/******************************************************************************************/
 /** server_routine() function *************************************************************/
 void *server_routine(void *arg)
 {
@@ -163,9 +164,7 @@ void *server_routine(void *arg)
 		err=pthread_mutex_lock(&server.mutex);
 
 		while(server.first==NULL)
-		{
 			err=pthread_cond_wait(&server.request, &server.mutex);
-		}
 
 		/** dequeue 1st request in the queue **/
 		request=server.first;
@@ -202,51 +201,26 @@ void *server_routine(void *arg)
 			break;
 
 		case DB_SEARCH:
-
-			printf("You have entered SEARCH, %s\n", book_info_prompt);
-
-			if( (read(STDIN_FILENO, input_buffer, INPUT_BUFF_SIZE) > 0) )
-			{
-
-				if( (search(filename, input_buffer, &byte_position)==1) )
-					printf("Found in record at byte position: %d.\n", byte_position);
-
-		
-				else
-					printf("Not found in record.\n");
-			}
-
+			if( (search(filename, request->text, &byte_position)==1) )
+					printf("%s found in record at byte position: %d.\n", request->text, byte_position);
 			else
-				printf("Sorry, you did not enter any data to search for in the file.\n");
+				printf("%s not found in record.\n", request->text);
 			break;
 
 		case DB_INSERT:
-			printf("You have entered INSERT, %s\n", book_info_prompt);
-
-			if(read(STDIN_FILENO, input_buffer, INPUT_BUFF_SIZE) >0)
-				insert(fd, filename, input_buffer);
-			
-			else
-				printf("Sorry, you did not enter any data to insert into the file.\n");
+			//printf("Inserting %s\n", request->text);
+			insert(fd, filename, request->text);
 			break;
 
 		case DB_DELETE:
-			printf("You have entered DELETE, %s\n", book_info_prompt);
-
-			if(read(STDIN_FILENO, input_buffer, INPUT_BUFF_SIZE) > 0)
-				delete(fd, filename, input_buffer, file_buffer_1, file_buffer_2);
-
-			else
-				printf("Sorry, you did not enter any data to insert into the file.\n");
+			//printf("Deleting %s\n", request->text);
+			delete(fd, filename, request->text, file_buffer_1, file_buffer_2);
 			break;
 
 		case DB_REPLACE:
-			printf("You have entered REPLACE, %s\n", book_info_prompt);
-
-			if(read(STDIN_FILENO, input_buffer, INPUT_BUFF_SIZE) > 0)
-				replace(fd, filename, input_buffer, file_buffer_1, file_buffer_2);
-			else
-				printf("Sorry, you did not enter any data to insert into the file.\n");
+			//printf("Replacing, %s\n", request->text);
+			replace(fd, filename, input_buffer, file_buffer_1, file_buffer_2);
+			break;
 		
 		default:
 			break;
@@ -270,8 +244,6 @@ void *server_routine(void *arg)
 
 		if(operation==QUIT_REQUEST)
 			break;
-
-
 	}
 	
 	return NULL;
@@ -280,7 +252,7 @@ void *server_routine(void *arg)
 /** server_request() function *************************************************************/
 void server_request(int operation, int sync, const char *prompt, char *string)
 {
-	printf("In server_request\n");	
+	printf("In server_request, calling operation number %d on input: %s\n", operation, string);	
 
 	request_t *request; //analogous to node in linked list
 	int err;
@@ -298,18 +270,18 @@ void server_request(int operation, int sync, const char *prompt, char *string)
 
 		server.running=1;
 
-		//printf("server_request creating thread and calling server_routine.\n");
+		printf("server_request creating thread and calling server_routine.\n");
 		err=pthread_create(&thread, &detached_attr, server_routine, NULL);
 
 		pthread_attr_destroy(&detached_attr);
 	}
 
-	//printf("Before malloc\n");
 	/** create request **********************************************/
 	request=(request_t *)malloc(sizeof(request_t));
-	//printf("After malloc\n");
+
 	request->next=NULL;
-	//printf("server_request create request\n");
+	printf("server_request create request\n");
+
 	/** call passed in arguements ***********************************/
 	request->operation = operation;
 	request->synchronous = sync;
@@ -318,29 +290,37 @@ void server_request(int operation, int sync, const char *prompt, char *string)
 	{
 		/** set done predicate to 0 ***********************/
 		request->done_flag=0;
+
 		/** initilize the pthread cond_t variable "done" **/
 		err=pthread_cond_init(&request->done, NULL);
-
 	}
 
 	/** ALL REQUESTS GET A PROMPT ***********************************/
 	if(prompt!=NULL)
-	{
 		strncpy(request->prompt, prompt, 32);
-		printf("5--------------------------------------------\n");
-	}
+
 
 	else
-	{
 		request->prompt[0]='\0';
-	}
 	/***************************************************************/
 	/** ONLY THE WRITE REQUESTS GET TO WRITE ***********************/
 	if((operation==WRITE_REQUEST) && string!=NULL)
-	{
 		strncpy(request->text, string, 128);
-	}
 
+	/** Added functions *******************************************/
+	else if((operation==DB_SEARCH) && string!=NULL)
+		strncpy(request->text, string, 128);
+
+	else if((operation==DB_INSERT) && string!=NULL)
+		strncpy(request->text, string, 128);
+
+	else if((operation==DB_DELETE) && string!=NULL)
+		strncpy(request->text, string, 128);
+
+	else if((operation==DB_REPLACE) && string!=NULL)
+		strncpy(request->text, string, 128);
+	/***************************************************************/
+	/** READ_REQUEST ***********************************************/
 	else
 	{
 		request->text[0]='\0';
@@ -367,23 +347,20 @@ void server_request(int operation, int sync, const char *prompt, char *string)
 	if(sync)
 	{
 		while(!request->done_flag)
-		{
 			err=pthread_cond_wait(&request->done, &server.mutex);
-		}
 
 		if(operation==READ_REQUEST)
-		{
 			strcpy(string, request->text);
-		}
 
 		err=pthread_cond_destroy(&request->done);
-		free(request);
+
+		//free(request);
 	}
 
 	err=pthread_mutex_unlock(&server.mutex);
 }
-/******************************************************************************************/
-/** Client_routine() function *************************************************************/
+/****************************************************************************************************/
+/** Client_routine() function ***********************************************************************/
 void *client_routine(void *arg)
 {
 	printf("In client_routine()...\n");
@@ -395,23 +372,108 @@ void *client_routine(void *arg)
 	char string[128];
 	char formatted[128];
 	int err;
+	int command;
 
 	//sprintf(prompt, "Thread %lu prompt:\n", pthread_self());
 	sprintf(prompt, "Client %d prompt:\n", client_number);
 	puts(prompt);
 
 	while(1)
-	{		
-		server_request(READ_REQUEST, 1, prompt, string);
+	{
+		clear_char_buffer(input_buffer, INPUT_BUFF_SIZE); //clear buffer before accepting input
+		clear_char_buffer(string, 128);
+		printf("%s\n", command_prompt); //ask user to enter command
+	
+		/******************************************************************/
+		if(read(STDIN_FILENO, input_buffer, INPUT_BUFF_SIZE) > 0)
+		{
+			if( strncmp(input_buffer, "READ", 4) == 0)
+				command = READ_REQUEST;
+			else if( strncmp(input_buffer, "WRITE", 4) == 0)
+				command = WRITE_REQUEST;
+			else if( strncmp(input_buffer, "SEARCH", 4) == 0)
+				command = DB_SEARCH;
+			else if( strncmp(input_buffer, "INSERT", 4) == 0)
+				command = DB_INSERT;
+			else if( strncmp(input_buffer, "DELETE", 4) == 0)
+				command = DB_DELETE;
+			else if( strncmp(input_buffer, "REPLACE", 4) == 0)
+				command = DB_REPLACE;
+			else if( strncmp(input_buffer, "QUIT", 4) == 0)
+			{
+				command = QUIT_REQUEST;
+				break;
+			}
+		}
+		/*******************************************************************/
+		/** Original READ_REQUEST and WRITE_REQUEST functions **************/		
+		if(command == READ_REQUEST)
+		{
+			printf("Client routine calling server_request(READ_REQUEST)\n");		
+			server_request(READ_REQUEST, 1, prompt, string);
+		}
+		
+		else if(command == WRITE_REQUEST)
+		{
+			if(strlen(string)==0)
+				break;
 
-		if(strlen(string)==0)
-			break;
+			sprintf(formatted, "(%d) %s", client_number, string);
+			printf("formatted: %s\n", formatted);
 
-		sprintf(formatted, "(%d) %s", client_number, string);
-		//printf("formatted: %s\n", formatted);
+			printf("Client routine calling server_request(Write_Request).\n");
+			server_request(WRITE_REQUEST, 0, NULL, formatted);
+		}
+		/************************************************************************/
+		/** Added functions *****************************************************/
+		else if(command == DB_SEARCH)
+		{
+			printf("Client routine calling server_request(BD_SEARCH)\n");
+			printf("%s\n", book_info_prompt);
 
-		//printf("Client routine calling server_request(Write_Request).\n");
-		server_request(WRITE_REQUEST, 0, NULL, formatted);
+			if(read(STDIN_FILENO, string, 128) > 0)
+				server_request(DB_SEARCH, 1, NULL, string);
+			else
+				printf("Sorry, you did not enter a book to search for.\n");
+		}
+		else if(command == DB_INSERT)
+		{
+			printf("Client routine calling server_request(BD_INSERT)");
+			printf("%s\n", book_info_prompt);
+
+			if(read(STDIN_FILENO, string, 128) > 0)
+				server_request(DB_INSERT, 0, NULL, string);
+
+			else
+				printf("Sorry, you did not enter a book to search for.\n");
+		}
+
+		else if(command == DB_DELETE)
+		{
+			printf("Client routine calling server_request(DB_DELETE)");
+			printf("%s\n", book_info_prompt);
+
+			if(read(STDIN_FILENO, string, 128) > 0)
+				server_request(DB_DELETE, 0, NULL, string);
+
+			else
+				printf("Sorry, you did not enter a book to search for.\n");
+		}
+
+		else if(command == DB_REPLACE)
+		{
+			printf("Client routine calling server_request(DB_REPLACE)");
+			printf("%s\n", book_info_prompt);
+
+			if(read(STDIN_FILENO, string, 128) > 0)
+				server_request(DB_REPLACE, 0, NULL, string);
+
+			else
+				printf("Sorry, you did not enter a book to search for.\n");
+		}
+
+		else
+			printf("Sorry, you entered an invalid command, please try again.\n");
 	}
 
 	err=pthread_mutex_lock(&client_mutex);
@@ -460,6 +522,7 @@ int search(char *file_name, char *book_info, int *byte_position)
 	fclose(fp);
 	return -1;
 }
+/*******************************************************************************************************/
 int insert(int file_desc, char *file_name, char *book_info)
 {
 	int success = 0;
@@ -476,6 +539,7 @@ int insert(int file_desc, char *file_name, char *book_info)
 
 	return success;
 }   
+/******************************************************************************************************/
 int delete(int file_desc, char* file_name, char *book_info, char buffer_1[], char buffer_2[])
 {
 	int byte_position = 0;
@@ -521,6 +585,7 @@ int delete(int file_desc, char* file_name, char *book_info, char buffer_1[], cha
 		return -1;
 	}
 }
+/*****************************************************************************************************/
 int replace(int file_desc, char *file_name, char *book_info, char buffer_1[], char buffer_2[])
 {
 	int byte_position = 0;
@@ -568,7 +633,6 @@ int replace(int file_desc, char *file_name, char *book_info, char buffer_1[], ch
 			/*********************************************************************************/
 
 			printf("Replaced entry at byte_position: %d\n", byte_position);
-			
 			return 1;
 		}	
 	}
@@ -579,3 +643,4 @@ int replace(int file_desc, char *file_name, char *book_info, char buffer_1[], ch
 		return -1;
 	}
 }
+/****************************************************************************************************/
