@@ -29,49 +29,6 @@ struct matrix_multiplication_struct
 
 int main(void)
 {
-
-	/** new code *********************************************************************/
-	time_t t;
-	srand((unsigned) time(&t)); //initilize random number generator
-
-	int *array_A2 = (int*)malloc(row_A_size*column_A_size*sizeof(int));
-	for(int i=0; i<row_A_size; i++)
-	{
-		for(int j=0; j<column_A_size; j++)
-		{
-			*(array_A2 + i*column_A_size + j) = (rand() % 20);
-		}
-	}
-
-	printf("dynamic array contents:\n");
-	for(int i=0; i<row_A_size; i++)
-	{
-		for(int j=0; j<column_A_size; j++)
-		{
-			printf("%d ",*(array_A2 + i*column_A_size + j));
-		}
-		printf("\n");
-	}
-	printf("\n");
-	int *array_B2 = (int*)malloc(row_B_size*column_B_size*sizeof(int));
-	for(int i=0; i<row_B_size; i++)
-	{
-		for(int j=0; j<column_B_size; j++)
-		{
-			*(array_B2 + i*column_B_size + j) = (rand() % 20);
-		}
-	}
-
-	printf("dynamic array contents:\n");
-	for(int i=0; i<row_B_size; i++)
-	{
-		for(int j=0; j<column_B_size; j++)
-		{
-			printf("%d ",*(array_B2 + i*column_B_size + j));
-		}
-		printf("\n");
-	}
-	/*********************************************************************************/
 	int array_A[row_A_size][column_A_size] = { {1,2,3,4},{5,6,7,8},{9,10,11,12} };
 	int array_B[row_B_size][column_B_size] = { {2,3,5},{7,11,13},{17,19,23},{29,31,37} };
 
